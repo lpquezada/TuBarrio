@@ -1,5 +1,5 @@
 /*
- * DoorLoop clone – main application logic
+ * TuBarrio – main application logic
  * This script manages loading data from localStorage, rendering the UI, and
  * handling CRUD operations for properties, units, tenants, leases, payments,
  * maintenance requests, accounting, CRM, communication, reports, files,
@@ -85,6 +85,47 @@
     }
     // Load or initialize app data
     let appData = getAppData();
+
+    /**
+     * Helper functions to determine which properties and units are accessible
+     * for the current user. These are used to filter displayed data so that
+     * tenants see only their own lease/property, managers see only the
+     * properties they manage, owners see only their owned properties, and
+     * vendors see only assigned requests. Admins can see everything.
+     */
+    function getAccessiblePropertyIds() {
+      // Admins see all properties
+      if (currentUser.role === 'admin') {
+        return appData.properties.map(p => p.id);
+      }
+      // Owners see only their properties
+      if (currentUser.role === 'owner') {
+        return appData.properties
+          .filter(p => p.ownerId === currentUser.id)
+          .map(p => p.id);
+      }
+      // Managers see only properties they manage
+      if (currentUser.role === 'manager') {
+        return appData.properties
+          .filter(p => p.managerId === currentUser.id)
+          .map(p => p.id);
+      }
+      // Tenants see only their assigned property
+      if (currentUser.role === 'tenant') {
+        const tenantRecord = appData.tenants.find(
+          t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase()
+        );
+        return tenantRecord ? [tenantRecord.propertyId] : [];
+      }
+      // Vendors and other roles do not directly own properties
+      return [];
+    }
+    function getAccessibleUnitIds() {
+      const propertyIds = getAccessiblePropertyIds();
+      return appData.units
+        .filter(u => propertyIds.includes(u.propertyId))
+        .map(u => u.id);
+    }
 
     // Show greeting
     const userWelcome = document.getElementById('userWelcome');
@@ -184,16 +225,32 @@
 
     // Chart initialization on dashboard
     function updateDashboardMetrics() {
-      // Count properties, units, tenants
-      document.getElementById('countProperties').textContent = appData.properties.length;
-      document.getElementById('countUnits').textContent = appData.units.length;
-      document.getElementById('countTenants').textContent = appData.tenants.length;
-      // Sum revenue (paid payments)
-      const totalRevenue = appData.payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + Number(p.amount), 0);
+      // Determine which properties and units are visible to current user
+      const propertyIds = getAccessiblePropertyIds();
+      const unitIds = getAccessibleUnitIds();
+      const visibleProperties = propertyIds.length > 0
+        ? appData.properties.filter(p => propertyIds.includes(p.id))
+        : appData.properties;
+      const visibleUnits = unitIds.length > 0
+        ? appData.units.filter(u => unitIds.includes(u.id))
+        : appData.units;
+      const visibleTenants = propertyIds.length > 0
+        ? appData.tenants.filter(t => propertyIds.includes(t.propertyId))
+        : appData.tenants;
+      // Count properties, units and tenants in scope
+      document.getElementById('countProperties').textContent = visibleProperties.length;
+      document.getElementById('countUnits').textContent = visibleUnits.length;
+      document.getElementById('countTenants').textContent = visibleTenants.length;
+      // Sum revenue (paid payments) for accessible properties
+      let paymentsToSum = appData.payments.filter(p => p.status === 'Paid');
+      if (propertyIds.length > 0) {
+        paymentsToSum = paymentsToSum.filter(p => propertyIds.includes(p.propertyId));
+      }
+      const totalRevenue = paymentsToSum.reduce((sum, p) => sum + Number(p.amount), 0);
       document.getElementById('sumRevenue').textContent = formatCurrency(totalRevenue);
-      // Occupancy chart data
-      const totalUnits = appData.units.length;
-      const occupiedUnits = appData.units.filter(unit => unit.occupied).length;
+      // Occupancy chart data based on visible units
+      const totalUnits = visibleUnits.length;
+      const occupiedUnits = visibleUnits.filter(unit => unit.occupied).length;
       const vacantUnits = totalUnits - occupiedUnits;
       const occupancyCtx = document.getElementById('occupancyChart').getContext('2d');
       const occupancyData = {
@@ -212,6 +269,10 @@
       const monthlyRevenue = Array(12).fill(0);
       appData.payments.forEach(p => {
         if (p.status === 'Paid') {
+          // Only include payments for accessible properties when filtering
+          if (propertyIds.length > 0 && !propertyIds.includes(p.propertyId)) {
+            return;
+          }
           const dt = new Date(p.paidDate || p.date);
           if (dt.getFullYear() === currentYear) {
             monthlyRevenue[dt.getMonth()] += Number(p.amount);
@@ -240,7 +301,12 @@
     function renderProperties() {
       const tbody = document.getElementById('propertiesTableBody');
       tbody.innerHTML = '';
-      appData.properties.forEach(property => {
+      // Only display properties that are accessible to the current user
+      const propertyIds = getAccessiblePropertyIds();
+      const propertiesToShow = propertyIds.length > 0 ?
+        appData.properties.filter(p => propertyIds.includes(p.id)) :
+        appData.properties;
+      propertiesToShow.forEach(property => {
         const tr = document.createElement('tr');
         const owner = users.find(u => u.id === property.ownerId);
         const manager = users.find(u => u.id === property.managerId);
@@ -349,7 +415,12 @@
     function renderUnits() {
       const tbody = document.getElementById('unitsTableBody');
       tbody.innerHTML = '';
-      appData.units.forEach(unit => {
+      // Only display units for accessible properties
+      const propertyIds = getAccessiblePropertyIds();
+      const unitsToShow = propertyIds.length > 0 ?
+        appData.units.filter(u => propertyIds.includes(u.propertyId)) :
+        appData.units;
+      unitsToShow.forEach(unit => {
         const property = appData.properties.find(p => p.id === unit.propertyId);
         const tenant = appData.tenants.find(t => t.id === unit.tenantId);
         const tr = document.createElement('tr');
@@ -446,7 +517,18 @@
     function renderTenants() {
       const tbody = document.getElementById('tenantsTableBody');
       tbody.innerHTML = '';
-      appData.tenants.forEach(tenant => {
+      // Determine which tenants to display
+      let tenantsToShow;
+      if (currentUser.role === 'tenant') {
+        // Only show the current tenant's record
+        tenantsToShow = appData.tenants.filter(t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase());
+      } else {
+        const propertyIds = getAccessiblePropertyIds();
+        tenantsToShow = propertyIds.length > 0 ?
+          appData.tenants.filter(t => propertyIds.includes(t.propertyId)) :
+          appData.tenants;
+      }
+      tenantsToShow.forEach(tenant => {
         const property = appData.properties.find(p => p.id === tenant.propertyId);
         const unit = appData.units.find(u => u.id === tenant.unitId);
         const tr = document.createElement('tr');
@@ -582,7 +664,24 @@
     function renderLeases() {
       const tbody = document.getElementById('leasesTableBody');
       tbody.innerHTML = '';
-      appData.leases.forEach(lease => {
+      // Determine which leases to display
+      let leasesToShow = appData.leases;
+      if (currentUser.role === 'tenant') {
+        const tenantRecord = appData.tenants.find(
+          t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase()
+        );
+        if (tenantRecord) {
+          leasesToShow = leasesToShow.filter(l => l.tenantId === tenantRecord.id);
+        } else {
+          leasesToShow = [];
+        }
+      } else {
+        const propertyIds = getAccessiblePropertyIds();
+        if (propertyIds.length > 0) {
+          leasesToShow = leasesToShow.filter(l => propertyIds.includes(l.propertyId));
+        }
+      }
+      leasesToShow.forEach(lease => {
         const tenant = appData.tenants.find(t => t.id === lease.tenantId);
         const property = appData.properties.find(p => p.id === lease.propertyId);
         const unit = appData.units.find(u => u.id === lease.unitId);
@@ -691,9 +790,17 @@
       let paymentsToDisplay = appData.payments;
       if (currentUser.role === 'tenant') {
         // only show payments for this tenant
-        const tenantRecord = appData.tenants.find(t => t.email.toLowerCase() === currentUser.email.toLowerCase());
+        const tenantRecord = appData.tenants.find(t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase());
         if (tenantRecord) {
           paymentsToDisplay = appData.payments.filter(p => p.tenantId === tenantRecord.id);
+        } else {
+          paymentsToDisplay = [];
+        }
+      } else {
+        // For owners/managers restrict to accessible properties
+        const propertyIds = getAccessiblePropertyIds();
+        if (propertyIds.length > 0) {
+          paymentsToDisplay = paymentsToDisplay.filter(p => propertyIds.includes(p.propertyId));
         }
       }
       info.textContent = '';
@@ -803,14 +910,21 @@
       tbody.innerHTML = '';
       let requestsToShow = appData.maintenanceRequests;
       if (currentUser.role === 'tenant') {
-        const tenantRecord = appData.tenants.find(t => t.email.toLowerCase() === currentUser.email.toLowerCase());
+        const tenantRecord = appData.tenants.find(t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase());
         if (tenantRecord) {
           requestsToShow = requestsToShow.filter(r => r.tenantId === tenantRecord.id);
+        } else {
+          requestsToShow = [];
         }
-      }
-      if (currentUser.role === 'vendor') {
-        // Show only assigned requests
+      } else if (currentUser.role === 'vendor') {
+        // Vendors see only assigned requests
         requestsToShow = requestsToShow.filter(r => r.vendorId === currentUser.id);
+      } else {
+        // Owners/managers: only requests for accessible properties
+        const propertyIds = getAccessiblePropertyIds();
+        if (propertyIds.length > 0) {
+          requestsToShow = requestsToShow.filter(r => propertyIds.includes(r.propertyId));
+        }
       }
       requestsToShow.forEach(req => {
         const tenant = appData.tenants.find(t => t.id === req.tenantId);
