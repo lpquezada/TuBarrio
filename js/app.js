@@ -292,6 +292,32 @@
       };
       if (revenueChartInstance) revenueChartInstance.destroy();
       revenueChartInstance = new Chart(revenueCtx, { type:'line', data: revenueData, options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } } });
+
+      // When the current user is a tenant, customize the dashboard metrics to focus on their payments.
+      if (currentUser.role === 'tenant') {
+        const tenantRecord = appData.tenants.find(t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase());
+        if (tenantRecord) {
+          const tenantPayments = appData.payments.filter(p => p.tenantId === tenantRecord.id);
+          const duePayments = tenantPayments.filter(p => p.status === 'Due').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+          const paidPayments = tenantPayments.filter(p => p.status === 'Paid');
+          const nextDueDate = duePayments.length > 0 ? duePayments[0].dueDate : '';
+          const totalDueAmount = duePayments.reduce((sum,p) => sum + Number(p.amount), 0);
+          const totalPaidAmount = paidPayments.reduce((sum,p) => sum + Number(p.amount), 0);
+          // Update card titles for tenant dashboard
+          const dashboardCards = document.querySelectorAll('#sectionDashboard .card');
+          if (dashboardCards.length >= 4) {
+            dashboardCards[0].querySelector('.card-title').textContent = 'Payments Due';
+            dashboardCards[1].querySelector('.card-title').textContent = 'Amount Due';
+            dashboardCards[2].querySelector('.card-title').textContent = 'Paid Amount';
+            dashboardCards[3].querySelector('.card-title').textContent = 'Next Due';
+          }
+          // Display the tenant-specific numbers
+          document.getElementById('countProperties').textContent = duePayments.length;
+          document.getElementById('countUnits').textContent = formatCurrency(totalDueAmount);
+          document.getElementById('countTenants').textContent = formatCurrency(totalPaidAmount);
+          document.getElementById('sumRevenue').textContent = nextDueDate || '–';
+        }
+      }
     }
     updateDashboardMetrics();
 
@@ -813,6 +839,17 @@
         const property = appData.properties.find(p => p.id === payment.propertyId);
         const unit = appData.units.find(u => u.id === payment.unitId);
         const tr = document.createElement('tr');
+        // Build action buttons based on payment status and role
+        const actions = [];
+        if (payment.status === 'Due') {
+          actions.push('<button class="btn btn-sm btn-success" data-action="pay" data-id="'+payment.id+'">Pay</button>');
+        } else if (payment.status === 'Paid') {
+          actions.push('<button class="btn btn-sm btn-warning" data-action="undo" data-id="'+payment.id+'">Undo</button>');
+        }
+        // Allow managers, owners and admins to delete payments
+        if (currentUser.role !== 'tenant' && currentUser.role !== 'vendor') {
+          actions.push('<button class="btn btn-sm btn-danger" data-action="delete" data-id="'+payment.id+'">Delete</button>');
+        }
         tr.innerHTML = `
           <td>${tenant ? tenant.name : ''}</td>
           <td>${property ? property.name : ''}</td>
@@ -820,28 +857,55 @@
           <td>${payment.dueDate}</td>
           <td>${formatCurrency(payment.amount)}</td>
           <td>${payment.status}</td>
-          <td>
-            ${payment.status === 'Due' ? '<button class="btn btn-sm btn-success" data-action="pay" data-id="'+payment.id+'">Pay</button>' : ''}
-          </td>
+          <td>${actions.join(' ')}</td>
         `;
         tbody.appendChild(tr);
       });
     }
     document.getElementById('paymentsTableBody').addEventListener('click', e => {
-      if (e.target.dataset.action === 'pay') {
-        const paymentId = e.target.dataset.id;
-        const payment = appData.payments.find(p => String(p.id) === paymentId);
-        if (payment) {
-          payment.status = 'Paid';
-          payment.paidDate = formatDate(new Date());
-          // Add to accounting incomes
-          appData.expenses.push({ id: Date.now(), date: payment.paidDate, description: 'Rent Payment', amount: payment.amount, type: 'Income' });
-          saveAppData(appData);
-          renderPayments();
-          renderAccounting();
-          updateDashboardMetrics();
+      const action = e.target.dataset.action;
+      if (!action) return;
+      const paymentId = e.target.dataset.id;
+      const payment = appData.payments.find(p => String(p.id) === paymentId);
+      if (!payment) return;
+      if (action === 'pay') {
+        // Mark payment as paid and log income
+        payment.status = 'Paid';
+        payment.paidDate = formatDate(new Date());
+        appData.expenses.push({ id: Date.now(), date: payment.paidDate, description: 'Rent Payment', amount: payment.amount, type: 'Income' });
+      } else if (action === 'undo') {
+        // Revert payment to due and remove last matching income entry
+        payment.status = 'Due';
+        payment.paidDate = null;
+        // Remove the most recent income record for this amount and description if exists
+        for (let i = appData.expenses.length - 1; i >= 0; i--) {
+          const exp = appData.expenses[i];
+          if (exp.type === 'Income' && Number(exp.amount) === Number(payment.amount) && exp.description === 'Rent Payment') {
+            appData.expenses.splice(i, 1);
+            break;
+          }
+        }
+      } else if (action === 'delete') {
+        // Delete payment entirely
+        const index = appData.payments.findIndex(p => String(p.id) === paymentId);
+        if (index !== -1) {
+          // If payment was paid, remove associated income record
+          if (payment.status === 'Paid') {
+            for (let i = appData.expenses.length - 1; i >= 0; i--) {
+              const exp = appData.expenses[i];
+              if (exp.type === 'Income' && Number(exp.amount) === Number(payment.amount) && exp.description === 'Rent Payment') {
+                appData.expenses.splice(i, 1);
+                break;
+              }
+            }
+          }
+          appData.payments.splice(index, 1);
         }
       }
+      saveAppData(appData);
+      renderPayments();
+      renderAccounting();
+      updateDashboardMetrics();
     });
 
     /**
