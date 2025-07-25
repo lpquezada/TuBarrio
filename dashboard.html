@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DoorLoop Clone – Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Top navigation bar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">DoorLoop Clone</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="d-flex ms-auto align-items-center text-white">
+        <span id="userWelcome" class="me-3"></span>
+        <button id="logoutBtn" class="btn btn-sm btn-outline-light">Log out</button>
+      </div>
+    </div>
+  </nav>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav id="sidebar" class="col-md-2 d-md-block bg-dark sidebar collapse">
+        <div class="position-sticky pt-3">
+          <ul class="nav flex-column" id="navLinks">
+            <li class="nav-item"><a class="nav-link active" href="#" data-section="sectionDashboard">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionProperties">Properties</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionUnits">Units</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionTenants">Tenants</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionLeases">Leases</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionPayments">Payments</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionMaintenance">Maintenance</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionAccounting">Accounting</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionCRM">CRM</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionCommunication">Communication</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionReports">Reports</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionFiles">Files</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionOwner" data-role="owner">Owner Portal</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-section="sectionUsers" data-role="admin">Users</a></li>
+          </ul>
+        </div>
+      </nav>
+      <!-- Main content -->
+      <main id="content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <!-- Dashboard section -->
+        <div id="sectionDashboard" class="app-section mt-4">
+          <h2>Dashboard</h2>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="card text-center mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Properties</h5>
+                  <p id="countProperties" class="display-6">0</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Units</h5>
+                  <p id="countUnits" class="display-6">0</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Tenants</h5>
+                  <p id="countTenants" class="display-6">0</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-center mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Revenue</h5>
+                  <p id="sumRevenue" class="display-6">$0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-lg-6">
+              <canvas id="occupancyChart" aria-label="Occupancy Rate Chart" role="img"></canvas>
+            </div>
+            <div class="col-lg-6">
+              <canvas id="revenueChart" aria-label="Revenue Chart" role="img"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Properties section -->
+        <div id="sectionProperties" class="app-section d-none mt-4">
+          <h2>Properties</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addPropertyBtn">Add Property</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Property Name</th>
+                  <th>Address</th>
+                  <th>Units</th>
+                  <th>Owner</th>
+                  <th>Manager</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="propertiesTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Property Modal -->
+          <div class="modal fade" id="propertyModal" tabindex="-1" aria-labelledby="propertyModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="propertyModalLabel">Add Property</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="propertyForm">
+                    <input type="hidden" id="propertyId">
+                    <div class="mb-3">
+                      <label for="propertyName" class="form-label">Property Name</label>
+                      <input type="text" class="form-control" id="propertyName" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="propertyAddress" class="form-label">Address</label>
+                      <input type="text" class="form-control" id="propertyAddress" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="propertyOwner" class="form-label">Owner</label>
+                      <select id="propertyOwner" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="propertyManager" class="form-label">Manager</label>
+                      <select id="propertyManager" class="form-select"></select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Units section -->
+        <div id="sectionUnits" class="app-section d-none mt-4">
+          <h2>Units</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addUnitBtn">Add Unit</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Unit Number</th>
+                  <th>Rent ($)</th>
+                  <th>Status</th>
+                  <th>Tenant</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="unitsTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Unit Modal -->
+          <div class="modal fade" id="unitModal" tabindex="-1" aria-labelledby="unitModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="unitModalLabel">Add Unit</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="unitForm">
+                    <input type="hidden" id="unitId">
+                    <div class="mb-3">
+                      <label for="unitProperty" class="form-label">Property</label>
+                      <select id="unitProperty" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="unitNumber" class="form-label">Unit Number</label>
+                      <input type="text" class="form-control" id="unitNumber" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="unitRent" class="form-label">Monthly Rent ($)</label>
+                      <input type="number" class="form-control" id="unitRent" min="0" step="0.01" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tenants section -->
+        <div id="sectionTenants" class="app-section d-none mt-4">
+          <h2>Tenants</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addTenantBtn">Add Tenant</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Property</th>
+                  <th>Unit</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tenantsTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Tenant Modal -->
+          <div class="modal fade" id="tenantModal" tabindex="-1" aria-labelledby="tenantModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="tenantModalLabel">Add Tenant</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="tenantForm">
+                    <input type="hidden" id="tenantId">
+                    <div class="mb-3">
+                      <label for="tenantName" class="form-label">Name</label>
+                      <input type="text" class="form-control" id="tenantName" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="tenantEmail" class="form-label">Email</label>
+                      <input type="email" class="form-control" id="tenantEmail" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="tenantPhone" class="form-label">Phone</label>
+                      <input type="tel" class="form-control" id="tenantPhone" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="tenantProperty" class="form-label">Property</label>
+                      <select id="tenantProperty" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="tenantUnit" class="form-label">Unit</label>
+                      <select id="tenantUnit" class="form-select"></select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leases section -->
+        <div id="sectionLeases" class="app-section d-none mt-4">
+          <h2>Leases</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addLeaseBtn">Add Lease</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Property</th>
+                  <th>Unit</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Rent ($)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leasesTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Lease Modal -->
+          <div class="modal fade" id="leaseModal" tabindex="-1" aria-labelledby="leaseModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="leaseModalLabel">Add Lease</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="leaseForm">
+                    <input type="hidden" id="leaseId">
+                    <div class="mb-3">
+                      <label for="leaseTenant" class="form-label">Tenant</label>
+                      <select id="leaseTenant" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="leaseProperty" class="form-label">Property</label>
+                      <select id="leaseProperty" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="leaseUnit" class="form-label">Unit</label>
+                      <select id="leaseUnit" class="form-select"></select>
+                    </div>
+                    <div class="row">
+                      <div class="col">
+                        <label for="leaseStart" class="form-label">Start Date</label>
+                        <input type="date" id="leaseStart" class="form-control" required>
+                      </div>
+                      <div class="col">
+                        <label for="leaseEnd" class="form-label">End Date</label>
+                        <input type="date" id="leaseEnd" class="form-control" required>
+                      </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                      <label for="leaseRent" class="form-label">Monthly Rent ($)</label>
+                      <input type="number" id="leaseRent" class="form-control" min="0" step="0.01" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payments section -->
+        <div id="sectionPayments" class="app-section d-none mt-4">
+          <h2>Payments</h2>
+          <div id="paymentsInfo" class="mb-3"></div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Property</th>
+                  <th>Unit</th>
+                  <th>Due Date</th>
+                  <th>Amount ($)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Maintenance section -->
+        <div id="sectionMaintenance" class="app-section d-none mt-4">
+          <h2>Maintenance Requests</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addRequestBtn">Add Request</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Property</th>
+                  <th>Unit</th>
+                  <th>Description</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Vendor</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="maintenanceTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Request Modal -->
+          <div class="modal fade" id="requestModal" tabindex="-1" aria-labelledby="requestModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="requestModalLabel">Add Maintenance Request</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="requestForm">
+                    <input type="hidden" id="requestId">
+                    <div class="mb-3">
+                      <label for="requestTenant" class="form-label">Tenant</label>
+                      <select id="requestTenant" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="requestProperty" class="form-label">Property</label>
+                      <select id="requestProperty" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="requestUnit" class="form-label">Unit</label>
+                      <select id="requestUnit" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="requestDescription" class="form-label">Description</label>
+                      <textarea id="requestDescription" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label for="requestPriority" class="form-label">Priority</label>
+                      <select id="requestPriority" class="form-select">
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accounting section -->
+        <div id="sectionAccounting" class="app-section d-none mt-4">
+          <h2>Accounting</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addExpenseBtn">Add Expense</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount ($)</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="accountingTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Expense Modal -->
+          <div class="modal fade" id="expenseModal" tabindex="-1" aria-labelledby="expenseModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="expenseModalLabel">Add Expense</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="expenseForm">
+                    <input type="hidden" id="expenseId">
+                    <div class="mb-3">
+                      <label for="expenseDate" class="form-label">Date</label>
+                      <input type="date" id="expenseDate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="expenseDescription" class="form-label">Description</label>
+                      <input type="text" id="expenseDescription" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="expenseAmount" class="form-label">Amount ($)</label>
+                      <input type="number" id="expenseAmount" class="form-control" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="expenseType" class="form-label">Type</label>
+                      <select id="expenseType" class="form-select">
+                        <option value="Expense">Expense</option>
+                        <option value="Income">Income</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CRM section -->
+        <div id="sectionCRM" class="app-section d-none mt-4">
+          <h2>CRM & Leads</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addLeadBtn">Add Lead</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Stage</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="crmTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit Lead Modal -->
+          <div class="modal fade" id="leadModal" tabindex="-1" aria-labelledby="leadModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="leadModalLabel">Add Lead</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="leadForm">
+                    <input type="hidden" id="leadId">
+                    <div class="mb-3">
+                      <label for="leadName" class="form-label">Name</label>
+                      <input type="text" id="leadName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="leadEmail" class="form-label">Email</label>
+                      <input type="email" id="leadEmail" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="leadPhone" class="form-label">Phone</label>
+                      <input type="tel" id="leadPhone" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="leadStage" class="form-label">Stage</label>
+                      <select id="leadStage" class="form-select">
+                        <option value="New">New</option>
+                        <option value="Contacted">Contacted</option>
+                        <option value="Applied">Applied</option>
+                        <option value="Approved">Approved</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Communication section -->
+        <div id="sectionCommunication" class="app-section d-none mt-4">
+          <h2>Communication</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addMessageBtn">Send Message</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Body</th>
+                  <th>Recipients</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="messagesTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add Message Modal -->
+          <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="messageModalLabel">Send Message</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="messageForm">
+                    <div class="mb-3">
+                      <label for="messageSubject" class="form-label">Subject</label>
+                      <input type="text" id="messageSubject" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="messageBody" class="form-label">Message</label>
+                      <textarea id="messageBody" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label for="messageRecipients" class="form-label">Recipients</label>
+                      <select id="messageRecipients" class="form-select" multiple>
+                        <option value="all">All Users</option>
+                        <option value="owners">Owners</option>
+                        <option value="managers">Managers</option>
+                        <option value="tenants">Tenants</option>
+                        <option value="vendors">Vendors</option>
+                      </select>
+                      <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (macOS) to select multiple recipients.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reports section -->
+        <div id="sectionReports" class="app-section d-none mt-4">
+          <h2>Reports</h2>
+          <p>Select a report to generate:</p>
+          <div class="mb-3">
+            <select id="reportType" class="form-select w-auto d-inline-block">
+              <option value="occupancy">Occupancy Report</option>
+              <option value="revenue">Revenue Report</option>
+              <option value="expenses">Expense Report</option>
+              <option value="profit">Profit & Loss</option>
+            </select>
+            <button class="btn btn-primary ms-2" id="generateReportBtn">Generate</button>
+          </div>
+          <div id="reportContainer">
+            <!-- Chart and report table inserted here -->
+          </div>
+        </div>
+
+        <!-- Files section -->
+        <div id="sectionFiles" class="app-section d-none mt-4">
+          <h2>Document Storage</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addFileBtn">Add File</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Description</th>
+                  <th>Date Uploaded</th>
+                  <th>Tags</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="filesTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit File Modal -->
+          <div class="modal fade" id="fileModal" tabindex="-1" aria-labelledby="fileModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="fileModalLabel">Add File</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="fileForm">
+                    <input type="hidden" id="fileId">
+                    <div class="mb-3">
+                      <label for="fileName" class="form-label">File Name</label>
+                      <input type="text" id="fileName" class="form-control" required placeholder="e.g., Lease_Agreement.pdf">
+                    </div>
+                    <div class="mb-3">
+                      <label for="fileDescription" class="form-label">Description</label>
+                      <input type="text" id="fileDescription" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                      <label for="fileTags" class="form-label">Tags (comma separated)</label>
+                      <input type="text" id="fileTags" class="form-control" placeholder="lease,tenant">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Owner portal section -->
+        <div id="sectionOwner" class="app-section d-none mt-4">
+          <h2>Owner Portal</h2>
+          <p id="ownerInfo"></p>
+          <div id="ownerProperties"></div>
+        </div>
+
+        <!-- Users section (Admin only) -->
+        <div id="sectionUsers" class="app-section d-none mt-4">
+          <h2>User Management</h2>
+          <div class="mb-3">
+            <button class="btn btn-primary" id="addUserBtn">Add User</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add/Edit User Modal -->
+          <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="userModalLabel">Add User</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="mb-3">
+                      <label for="userName" class="form-label">Name</label>
+                      <input type="text" id="userName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="userEmail" class="form-label">Email</label>
+                      <input type="email" id="userEmail" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="userPassword" class="form-label">Password</label>
+                      <input type="password" id="userPassword" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="userRole" class="form-label">Role</label>
+                      <select id="userRole" class="form-select">
+                        <option value="owner">Owner/Landlord</option>
+                        <option value="manager">Property Manager</option>
+                        <option value="tenant">Tenant</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <!-- App script -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <script src="js/app.js"></script>
+  <!-- Register service worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('js/service-worker.js').catch(function(err){console.error('Service Worker registration failed:', err);});
+      });
+    }
+  </script>
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

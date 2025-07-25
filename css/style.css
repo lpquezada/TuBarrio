@@ -1,0 +1,59 @@
+/* Generic styles for the DoorLoop clone */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.navbar-brand {
+  font-weight: 600;
+}
+
+/* Sidebar styles for the dashboard */
+#sidebar {
+  min-height: 100vh;
+  background: #343a40;
+  color: #fff;
+}
+
+#sidebar a {
+  color: #adb5bd;
+  text-decoration: none;
+  display: block;
+  padding: .75rem 1rem;
+  transition: background .2s, color .2s;
+}
+
+#sidebar a:hover, #sidebar a.active {
+  background: #495057;
+  color: #fff;
+}
+
+/* Main content area spacing */
+#content {
+  padding: 2rem;
+}
+
+/* Tables */
+table.table td, table.table th {
+  vertical-align: middle;
+}
+
+/* Form validation messages */
+.invalid-feedback {
+  display: none;
+}
+
+input:invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+  #sidebar {
+    display: none;
+  }
+  #content {
+    padding: 1rem;
+  }
+}
